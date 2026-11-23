@@ -1,0 +1,46 @@
+name: s01
+on:
+  schedule:
+  - cron: 23 * * * *
+  workflow_dispatch: null
+concurrency:
+  group: s01
+  cancel-in-progress: false
+permissions:
+  contents: read
+  actions: write
+jobs:
+  j1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: sl-state
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v4
+    - env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      run: bash ops/data.sh pull
+    - env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s01_1.sh"
+    - env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s01_3.sh" || true
+    - env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_KEY }}
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s01_2.sh"
+    - if: always()
+      env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      run: |
+        ls "$RUNNER_TEMP"/cilogs/*.log > /dev/null 2>&1 || exit 0
+        mkdir -p logs; cat "$RUNNER_TEMP"/cilogs/*.log | tail -c 200000 > "logs/s01_${{ github.run_number }}.log"
+        bash ops/data.sh push "log s01 ${{ github.run_number }}" "logs/s01_${{ github.run_number }}.log" || true

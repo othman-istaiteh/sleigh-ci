@@ -1,0 +1,77 @@
+name: s02
+on:
+  schedule:
+  - cron: 41 */6 * * *
+  workflow_dispatch:
+    inputs:
+      jobs:
+        default: '4'
+      block:
+        default: '24'
+      minutes:
+        default: '300'
+concurrency:
+  group: s02
+  cancel-in-progress: false
+permissions:
+  contents: read
+  actions: write
+jobs:
+  j1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: sl-state
+      cancel-in-progress: false
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@v4
+    - env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      run: bash ops/data.sh pull
+    - env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+        E1: ${{ inputs.jobs || '4' }}
+        E2: ${{ inputs.block || '24' }}
+        E3: '6.5'
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s02_1.sh"
+    - id: m
+      env:
+        J: ${{ inputs.jobs || '4' }}
+      run: python3 -c "import json,os;print('matrix='+json.dumps({'s':list(range(int(os.environ['J'])))}))" >> "$GITHUB_OUTPUT"
+  j2:
+    needs: j1
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.j1.outputs.matrix) }}
+    steps:
+    - uses: actions/checkout@v4
+    - env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      run: bash ops/data.sh pull
+    - env:
+        E1: ${{ matrix.s }}
+        E2: ${{ inputs.minutes || '300' }}
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s02_2.sh"
+    - if: always()
+      env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+        E1: ${{ matrix.s }}
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s02_3.sh"
+  j3:
+    needs: j2
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+    - env:
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      run: bash ops/data.sh pull
+    - env:
+        GH_TOKEN: ${{ github.token }}
+      run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s02_4.sh"
