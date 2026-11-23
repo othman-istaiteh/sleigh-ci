@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       jobs:
-        default: '4'
+        default: '16'
       block:
         default: '24'
       minutes:
@@ -32,13 +32,13 @@ jobs:
       run: bash ops/data.sh pull
     - env:
         DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
-        E1: ${{ inputs.jobs || '4' }}
+        E1: ${{ inputs.jobs || '16' }}
         E2: ${{ inputs.block || '24' }}
         E3: '6.5'
       run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s02_1.sh"
     - id: m
       env:
-        J: ${{ inputs.jobs || '4' }}
+        J: ${{ inputs.jobs || '16' }}
       run: python3 -c "import json,os;print('matrix='+json.dumps({'s':list(range(int(os.environ['J'])))}))" >> "$GITHUB_OUTPUT"
   j2:
     needs: j1
@@ -46,7 +46,7 @@ jobs:
     timeout-minutes: 340
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 16
       matrix: ${{ fromJson(needs.j1.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v4
