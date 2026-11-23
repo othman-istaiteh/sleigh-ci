@@ -2,7 +2,10 @@ name: s01
 on:
   schedule:
   - cron: 23 * * * *
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      fast:
+        default: '0' 
 concurrency:
   group: s01
   cancel-in-progress: false
@@ -25,6 +28,7 @@ jobs:
         KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
         KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+        FETCH_FAST: ${{ inputs.fast || '0' }}
       run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s01_1.sh"
     - env:
         KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
