@@ -56,6 +56,7 @@ jobs:
     - env:
         E1: ${{ matrix.s }}
         E2: ${{ inputs.minutes || '300' }}
+        DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
       run: python3 "$GITHUB_WORKSPACE/ci/r.py" "$GITHUB_WORKSPACE/ci/s02_2.sh"
     - if: always()
       env:
